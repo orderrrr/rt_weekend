@@ -1,0 +1,12 @@
+[package]
+name = "rt_impl"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+png = "0.17.13"
+spirv-std = "0.9.0"
+bytemuck = { version = "1.18.0", features = ["derive"] }
