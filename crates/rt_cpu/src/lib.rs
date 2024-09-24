@@ -41,8 +41,8 @@ pub fn render_cpu(wh: UVec2) {
         .into_iter()
         .collect::<Vec<(u32, u32)>>()
         .par_iter()
-        .map(|(w, h)| {
-            let result = render_px(&c, &world, uvec2(*h, *w));
+        .map(|(h, w)| {
+            let result = render_px(&c, &world, uvec2(*w, *h));
             vec![
                 (result.x * 255.999) as u8,
                 (result.y * 255.999) as u8,
