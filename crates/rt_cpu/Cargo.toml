@@ -7,6 +7,8 @@ edition = "2021"
 crate-type = ["dylib"]
 
 [dependencies]
+itertools = "0.13.0"
 png = "0.17.13"
+rayon = "1.10.0"
 rt_impl = { path = "../rt_impl" }
 spirv-std = "0.9.0"

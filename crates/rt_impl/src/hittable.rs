@@ -67,7 +67,7 @@ impl Hitable for Sphere {
 }
 
 pub struct HittableList {
-    pub list: Vec<Box<dyn Hitable>>,
+    pub list: Vec<Box<dyn Hitable + Send + Sync>>,
 }
 
 impl Hitable for HittableList {

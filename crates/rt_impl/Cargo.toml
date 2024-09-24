@@ -10,3 +10,9 @@ crate-type = ["dylib"]
 png = "0.17.13"
 spirv-std = "0.9.0"
 bytemuck = { version = "1.18.0", features = ["derive"] }
+
+[dev-dependencies]
+itertools = "0.13.0"
+
+[profile.dev] # who needs safety
+overflow-checks = false

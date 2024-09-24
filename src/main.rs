@@ -1,6 +1,6 @@
-use rt_cpu::render;
+use rt_cpu::render_cpu;
 use spirv_std::glam::uvec2;
 
 pub fn main() {
-    render(uvec2(800, 450));
+    render_cpu(uvec2(800, 450));
 }

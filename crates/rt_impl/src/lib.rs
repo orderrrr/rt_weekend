@@ -19,6 +19,7 @@ use color::Saturate;
 pub struct ShaderConstants {
     pub width: u32,
     pub height: u32,
+    pub aa_stages: u32,
 }
 
 fn rt(r: Ray, world: &dyn Hitable) -> Vec3 {
@@ -39,11 +40,26 @@ fn rt(r: Ray, world: &dyn Hitable) -> Vec3 {
 pub fn render_px(sc: &ShaderConstants, world: &dyn Hitable, idx: UVec2) -> Vec3 {
     let p = idx.as_vec2();
 
-    // calc uv and flipping uv.y
-    let uv = ((2.0 * p - uvec2(sc.width, sc.height).as_vec2()) / sc.height as f32) * vec2(1.0, -1.);
+    let mut color = Vec3::splat(0.0);
 
-    let ro = vec3(0.0, 0.0, 0.0);
-    let rd = vec3(uv.x, uv.y, -1.5).normalize();
+    for i in 0..sc.aa_stages {
+        // calc uv and flipping uv.y
+        let mut uv =
+            ((2.0 * p - uvec2(sc.width, sc.height).as_vec2()) / sc.height as f32) * vec2(1.0, -1.);
 
-    rt(Ray::new(ro, rd), world).saturate()
+        let offset = i as f32 * idx.as_vec2();
+        let position = vec2(
+            util::rand_f32(offset.x) - 0.5,
+            util::rand_f32(offset.y) - 0.5,
+        );
+
+        uv += position * 0.005;
+
+        let ro = vec3(0.0, 0.0, 0.0);
+        let rd = vec3(uv.x, uv.y, -1.5).normalize();
+
+        color += rt(Ray::new(ro, rd), world).saturate();
+    }
+
+    (color / sc.aa_stages as f32).clamp(Vec3::splat(0.0), Vec3::splat(1.0))
 }

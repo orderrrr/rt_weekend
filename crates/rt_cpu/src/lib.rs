@@ -1,12 +1,17 @@
+use itertools::Itertools;
+use rayon::{prelude::*, result};
 use rt_impl::{
     hittable::{HittableList, Sphere},
     render_px,
 };
-use std::{fs::File, io::BufWriter};
+use std::{
+    fs::File,
+    io::BufWriter,
+};
 
 use spirv_std::glam::{uvec2, UVec2, Vec3};
 
-pub fn render(wh: UVec2) {
+pub fn render_cpu(wh: UVec2) {
     println!("Rendering on CPU with width, height: {}, {}", wh.x, wh.y);
 
     let file = File::create("output.png").unwrap();
@@ -17,11 +22,10 @@ pub fn render(wh: UVec2) {
 
     let mut writer = encoder.write_header().unwrap();
 
-    let mut data = vec![0u8; (wh.x * wh.y * 3) as usize];
-
     let c = rt_impl::ShaderConstants {
         width: wh.x,
         height: wh.y,
+        aa_stages: 100,
     };
 
     let world = HittableList {
@@ -31,19 +35,22 @@ pub fn render(wh: UVec2) {
         ],
     };
 
-    for h in 0..wh.y {
-        if h % 10 == 0 {
-            println!("Rows Remaining: {}", wh.y - h);
-        }
-
-        for w in 0..wh.x {
-            let result = render_px(&c, &world, uvec2(w, h));
-            let idx = ((h * wh.x + w) * 3) as usize;
-            data[idx + 0] = (result.x * 255.999) as u8;
-            data[idx + 1] = (result.y * 255.999) as u8;
-            data[idx + 2] = (result.z * 255.999) as u8;
-        }
-    }
+    let data: Vec<u8> = (0..wh.y)
+        .into_iter()
+        .cartesian_product(0..wh.x)
+        .into_iter()
+        .collect::<Vec<(u32, u32)>>()
+        .par_iter()
+        .map(|(w, h)| {
+            let result = render_px(&c, &world, uvec2(*h, *w));
+            vec![
+                (result.x * 255.999) as u8,
+                (result.y * 255.999) as u8,
+                (result.z * 255.999) as u8,
+            ]
+        })
+        .flatten()
+        .collect();
 
     writer.write_image_data(&data).unwrap();
 }

@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 rt_cpu = { path = "./crates/rt_cpu" }
 spirv-std = "0.9.0"
+
+[profile.dev] # who needs safety anyway
+overflow-checks = false
