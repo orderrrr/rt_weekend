@@ -59,7 +59,26 @@ pub fn random_in_unit_sphere(p: Vec2) -> Vec3 {
 
 pub fn random_on_hemisphere(normal: Vec3, seed: Vec2) -> Vec3 {
     let rd = random_in_unit_sphere(seed); // random vector from 0.0, 1.0
-    rd * rd.dot(normal).signum()
+    let res = rd + normal;
+
+    if res.abs() == Vec3::splat(0.0) {
+        normal
+    } else {
+        res.normalize()
+    }
+}
+
+pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
+    v - 2.0 * v.dot(n) * n
+}
+
+// assumes none of the vectors length are zero
+pub fn cosine_similarity(a: Vec3, b: Vec3) -> f32 {
+    let dp = a.dot(b);
+    let am = a.length();
+    let bm = b.length();
+
+    dp / (am * bm)
 }
 
 // Since we plan on running this in the gpu we cannot use any standard rust random libs.
@@ -123,7 +142,7 @@ mod tests {
             .into_iter()
             .cartesian_product(0..max)
             .for_each(|(x, y)| {
-                let x = rand_f32(Vec2::new(x as f32 / max as f32, y as f32 / max as f32));
+                let x = rand_vec2(Vec2::new(x as f32 / max as f32, y as f32 / max as f32));
                 i += 1;
                 assert!(x >= 0.0);
                 assert!(x <= 1.0);

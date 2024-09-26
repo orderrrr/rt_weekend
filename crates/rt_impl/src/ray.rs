@@ -1,7 +1,5 @@
 use spirv_std::glam::{Vec2, Vec3};
 
-use crate::util;
-
 #[derive(Copy, Clone)]
 pub struct Ray {
     pub origin: Vec3,

@@ -2,13 +2,15 @@ use std::f32::INFINITY;
 
 use bytemuck::{Pod, Zeroable};
 
-use hittable::{Hitable, Interval};
+use hittable::{Hitable, HittableE, Interval};
+use material::Material;
 use ray::Ray;
 
 use spirv_std::glam::{uvec2, vec2, vec3, UVec2, Vec3};
 
 pub mod color;
 pub mod hittable;
+pub mod material;
 pub mod ray;
 pub mod util;
 
@@ -23,41 +25,43 @@ pub struct ShaderConstants {
     pub bounce_limit: i32,
 }
 
-fn rt(sc: &ShaderConstants, r: Ray, world: &dyn Hitable) -> Vec3 {
-
-    let mut r = r;
-
+fn rt(sc: &ShaderConstants, r: Ray, world: &HittableE) -> Vec3 {
     let mut hit = world.hit(&r, Interval::new(0.0, INFINITY));
     let mut color = Vec3::splat(1.0);
-
     let mut iter = 0;
 
     loop {
         if iter > sc.bounce_limit {
             break;
         }
-        match hit {
+
+        match &hit {
             Some(h) => {
-                let rand = h.normal + util::random_in_unit_sphere(r.seed);
-                color *= 2.0;
-                r = Ray::new(h.position, rand, util::hash22(r.seed * 1.0012032));
-                hit = world.hit(
-                    &r,
-                    Interval::new(0.001, INFINITY),
-                );
-                iter += 1;
-                // seed *= 1.012032;
+                let mat = h.material.scatter(&r, &h);
+                match mat.ray {
+                    Some(s) => {
+                        color *= 1.0 / mat.attenuation;
+                        hit = world.hit(&s, Interval::new(0.001, INFINITY));
+                        iter += 1;
+                    }
+                    None => {
+                        color *= 1.0 / mat.attenuation;
+                        break;
+                    }
+                }
             }
             None => break,
         }
     }
 
+    color = 1.0 / color;
+
     let rdu = r.direction.normalize();
     let a = 0.5 * (rdu.y + 1.0);
-    return (((1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0))) / color;
+    return ((1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0)) * color;
 }
 
-pub fn render_px(sc: &ShaderConstants, world: &dyn Hitable, idx: UVec2) -> Vec3 {
+pub fn render_px(sc: &ShaderConstants, world: &HittableE, idx: UVec2) -> Vec3 {
     let time = 1.0; // right now we are not using time
 
     let p = idx.as_vec2();
@@ -77,13 +81,29 @@ pub fn render_px(sc: &ShaderConstants, world: &dyn Hitable, idx: UVec2) -> Vec3 
 
         uv += position * 0.005;
 
-        let ro = vec3(0.0, 0.0, 0.0);
+        let ro = vec3(0.0, 0.0, 0.5);
         let rd = vec3(uv.x, uv.y, -1.5).normalize();
 
         let seed = util::hash22(uv + (i as f32) * (time % 100.));
 
-        color += rt(sc, Ray::new(ro, rd, seed), world).saturate();
+        color += rt(sc, Ray::new(ro, rd, seed), &world).saturate();
     }
 
-    (color / sc.aa_stages as f32).clamp(Vec3::splat(0.0), Vec3::splat(1.0))
+    linear_to_gamma((color / sc.aa_stages as f32).clamp(Vec3::splat(0.0), Vec3::splat(1.0)))
+}
+
+pub fn linear_to_gamma(splat: Vec3) -> Vec3 {
+    vec3(
+        linear_to_gamma_f32(splat.x),
+        linear_to_gamma_f32(splat.y),
+        linear_to_gamma_f32(splat.z),
+    )
+}
+
+pub fn linear_to_gamma_f32(f: f32) -> f32 {
+    if f > 0. {
+        f.sqrt()
+    } else {
+        0.0
+    }
 }

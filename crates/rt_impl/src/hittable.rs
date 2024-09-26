@@ -2,27 +2,64 @@ use std::f32::INFINITY;
 
 use spirv_std::glam::Vec3;
 
-use crate::ray::Ray;
+use crate::{material::MaterialE, ray::Ray};
 
 pub struct Hit {
     pub position: Vec3,
     pub normal: Vec3,
     pub t: f32,
     pub front_face: bool,
+    pub material: MaterialE,
 }
 
 pub trait Hitable {
     fn hit(&self, r: &Ray, t: Interval) -> Option<Hit>;
 }
 
+#[derive(Clone)]
+pub enum HittableE {
+    Sphere(Sphere),
+    List(Vec<HittableE>),
+}
+
+impl Hitable for HittableE {
+    fn hit(&self, r: &Ray, t: Interval) -> Option<Hit> {
+        match self {
+            HittableE::Sphere(s) => s.hit(r, t),
+            HittableE::List(l) => {
+                let mut closest = t.max;
+                let mut hit: Option<Hit> = None;
+
+                for h in l.iter() {
+                    match h.hit(r, Interval::new(t.min, closest)) {
+                        Some(r) => {
+                            closest = r.t;
+                            hit = Some(r);
+                        }
+                        None => {}
+                    }
+                }
+
+                hit
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
+    pub material: MaterialE,
 }
 
 impl Sphere {
-    pub fn new(center: Vec3, radius: f32) -> Self {
-        Self { center, radius }
+    pub fn new(center: Vec3, radius: f32, material: MaterialE) -> Self {
+        Self {
+            center,
+            radius,
+            material,
+        }
     }
 }
 
@@ -62,30 +99,8 @@ impl Hitable for Sphere {
             normal,
             front_face,
             t: root,
+            material: self.material,
         })
-    }
-}
-
-pub struct HittableList {
-    pub list: Vec<Box<dyn Hitable + Send + Sync>>,
-}
-
-impl Hitable for HittableList {
-    fn hit(&self, r: &Ray, t: Interval) -> Option<Hit> {
-        let mut closest = t.max;
-        let mut hit: Option<Hit> = None;
-
-        for h in self.list.iter() {
-            match h.hit(r, Interval::new(t.min, closest)) {
-                Some(r) => {
-                    closest = r.t;
-                    hit = Some(r);
-                }
-                None => {}
-            }
-        }
-
-        hit
     }
 }
 
