@@ -1,13 +1,10 @@
 use itertools::Itertools;
-use rayon::{prelude::*, result};
+use rayon::prelude::*;
 use rt_impl::{
     hittable::{HittableList, Sphere},
     render_px,
 };
-use std::{
-    fs::File,
-    io::BufWriter,
-};
+use std::{fs::File, io::BufWriter};
 
 use spirv_std::glam::{uvec2, UVec2, Vec3};
 
@@ -25,7 +22,8 @@ pub fn render_cpu(wh: UVec2) {
     let c = rt_impl::ShaderConstants {
         width: wh.x,
         height: wh.y,
-        aa_stages: 100,
+        aa_stages: 150,
+        bounce_limit: 100,
     };
 
     let world = HittableList {

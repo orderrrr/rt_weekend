@@ -5,7 +5,7 @@ use spirv_std::glam::Vec3;
 use crate::ray::Ray;
 
 pub struct Hit {
-    pub p: Vec3,
+    pub position: Vec3,
     pub normal: Vec3,
     pub t: f32,
     pub front_face: bool,
@@ -48,8 +48,8 @@ impl Hitable for Sphere {
             }
         }
 
-        let p = r.origin + (r.direction * root);
-        let outward_normal = ((p - self.center) / self.radius).normalize();
+        let position = r.origin + (r.direction * root);
+        let outward_normal = ((position - self.center) / self.radius).normalize();
 
         let front_face = r.direction.dot(outward_normal) < 0.0;
         // invert normal if we are inside
@@ -58,7 +58,7 @@ impl Hitable for Sphere {
         let normal = outward_normal * n;
 
         Some(Hit {
-            p,
+            position,
             normal,
             front_face,
             t: root,

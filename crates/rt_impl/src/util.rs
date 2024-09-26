@@ -1,12 +1,65 @@
-use std::mem;
+use std::{f32::consts::PI, mem};
 
-use spirv_std::glam::{UVec2, Vec2};
+use spirv_std::glam::{vec3, UVec2, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles};
 
 const IEEE_MANTISSA: u32 = 0x007FFFFF; // binary32 mantissa bitmask
 const IEEE_ONE: u32 = 0x3F800000; // 1.0 in IEEE binary32
 
 pub fn degrees_to_radians(degrees: f32) -> f32 {
     return degrees * std::f32::consts::PI / 180.0;
+}
+
+pub fn hash22(p: Vec2) -> Vec2 {
+    let mut p3 = (p.xyx() * vec3(0.1031, 0.1030, 0.0973)).fract();
+    p3 += p3.dot(p3.yzx() + vec3(33.33, 33.33, 33.33));
+    ((p3.xx() + p3.yz()) * p3.zy()).fract()
+}
+
+// vec3 hash32(vec2 p) {
+//     vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973));
+//     p3 += dot(p3, p3.yxz+33.33);
+//     return fract((p3.xxy+p3.yzz)*p3.zyx);
+// }
+pub fn hash32(p: Vec2) -> Vec3 {
+    let mut p3 = (p.xyx() * vec3(0.1031, 0.1030, 0.0973)).fract();
+    p3 += p3.dot(p3.yxz() + Vec3::splat(33.33));
+    ((p3.xxy() + p3.yzz()) * p3.zyx()).fract()
+}
+
+// vec3 randomInUnitSphere(vec2 p) {
+//     vec3 rand = hash32(p);
+//     float phi = 2.0 * PI * rand.x;
+//     float cosTheta = 2.0 * rand.y - 1.0;
+//     float u = rand.z;
+//
+//     float theta = acos(cosTheta);
+//     float r = pow(u, 1.0 / 3.0);
+//
+//     float x = r * sin(theta) * cos(phi);
+//     float y = r * sin(theta) * sin(phi);
+//     float z = r * cos(theta);
+//
+//     return vec3(x, y, z);
+// }
+pub fn random_in_unit_sphere(p: Vec2) -> Vec3 {
+    let rand = vec3(rand_f32(p.x), rand_f32(p.y), rand_f32(p.x));
+    let phi = 2.0 * PI * rand.x;
+    let cos_theta = 2.0 * rand.y - 1.0;
+    let u = rand.z;
+
+    let theta = cos_theta.acos();
+    let r = u.powf(1.0 / 3.0);
+
+    let x = r * theta.sin() * phi.cos();
+    let y = r * theta.sin() * phi.sin();
+    let z = r * theta.cos();
+
+    Vec3::new(x, y, z)
+}
+
+pub fn random_on_hemisphere(normal: Vec3, seed: Vec2) -> Vec3 {
+    let rd = random_in_unit_sphere(seed); // random vector from 0.0, 1.0
+    rd * rd.dot(normal).signum()
 }
 
 // Since we plan on running this in the gpu we cannot use any standard rust random libs.
@@ -45,6 +98,11 @@ pub fn rand_f32(x: f32) -> f32 {
 
     let f: f32 = unsafe { mem::transmute(m) };
     return f - 1.0; // Range [0:1]
+}
+
+// we need to provide an input vector to rand_f32 so that we can use the same random seed
+pub fn rand_vec3(x: Vec3) -> Vec3 {
+    vec3(rand_f32(x.x), rand_f32(x.y), rand_f32(x.z))
 }
 
 #[cfg(test)]
