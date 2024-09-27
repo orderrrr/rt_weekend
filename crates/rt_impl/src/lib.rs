@@ -154,5 +154,5 @@ pub fn describe_scene2() -> HittableE {
 }
 
 pub fn describe_scene3() -> HittableE {
-todo!()
+    todo!()
 }
