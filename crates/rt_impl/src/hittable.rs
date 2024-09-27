@@ -68,15 +68,15 @@ impl Hitable for Sphere {
         let oc = self.center - r.origin;
         let a = r.direction.length_squared();
         let h = r.direction.dot(oc);
-        let c = oc.length_squared() - self.radius * self.radius;
-        let discriminant = h * h - a * c;
+        let c = oc.length_squared() - (self.radius * self.radius);
+        let discriminant = (h * h) - (a * c);
 
         if discriminant < 0.0 {
             return None;
         }
 
-        let sqrtd = (h - discriminant.sqrt()) / a;
-        let mut root = sqrtd.clamp(t.min, t.max);
+        let sqrtd = discriminant.sqrt();
+        let mut root = (h - sqrtd) / a;
 
         if !t.surrounds(root) {
             root = (h + sqrtd) / a;
@@ -86,11 +86,11 @@ impl Hitable for Sphere {
         }
 
         let position = r.origin + (r.direction * root);
-        let outward_normal = ((position - self.center) / self.radius).normalize();
+        let outward_normal = (position - self.center) / self.radius;
 
         let front_face = r.direction.dot(outward_normal) < 0.0;
-        // invert normal if we are inside
 
+        // invert normal if we are inside
         let n = 2.0 * f32::from(front_face) - 1.0;
         let normal = outward_normal * n;
 

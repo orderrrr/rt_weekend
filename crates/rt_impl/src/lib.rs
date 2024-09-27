@@ -26,6 +26,7 @@ pub struct ShaderConstants {
 }
 
 fn rt(sc: &ShaderConstants, r: Ray, world: &HittableE) -> Vec3 {
+    let mut r = r;
     let mut hit = world.hit(&r, Interval::new(0.0, INFINITY));
     let mut color = Vec3::splat(1.0);
     let mut iter = 0;
@@ -41,7 +42,8 @@ fn rt(sc: &ShaderConstants, r: Ray, world: &HittableE) -> Vec3 {
                 match mat.ray {
                     Some(s) => {
                         color *= 1.0 / mat.attenuation;
-                        hit = world.hit(&s, Interval::new(0.001, INFINITY));
+                        hit = world.hit(&s, Interval::new(0.0001, INFINITY));
+                        r = s;
                         iter += 1;
                     }
                     None => {
@@ -81,7 +83,7 @@ pub fn render_px(sc: &ShaderConstants, world: &HittableE, idx: UVec2) -> Vec3 {
 
         uv += position * 0.005;
 
-        let ro = vec3(0.0, 0.0, 0.5);
+        let ro = vec3(0.0, 0.0, 0.3);
         let rd = vec3(uv.x, uv.y, -1.5).normalize();
 
         let seed = util::hash22(uv + (i as f32) * (time % 100.));

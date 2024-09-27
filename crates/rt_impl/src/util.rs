@@ -72,6 +72,19 @@ pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
     v - 2.0 * v.dot(n) * n
 }
 
+// inline vec3 refract(const vec3& uv, const vec3& n, double etai_over_etat) {
+//     auto cos_theta = std::fmin(dot(-uv, n), 1.0);
+//     vec3 r_out_perp =  etai_over_etat * (uv + cos_theta*n);
+//     vec3 r_out_parallel = -std::sqrt(std::fabs(1.0 - r_out_perp.length_squared())) * n;
+//     return r_out_perp + r_out_parallel;
+// }
+pub fn refract(uv: Vec3, n: Vec3, etai_over_etat: f32) -> Vec3 {
+    let cos_theta = ((-uv).dot(n)).min(1.0);
+    let r_out_perp = etai_over_etat * (uv + (cos_theta * n));
+    let r_out_parallel = -((1.0 - r_out_perp.length_squared()).abs().sqrt()) * n;
+    r_out_perp + r_out_parallel
+}
+
 // assumes none of the vectors length are zero
 pub fn cosine_similarity(a: Vec3, b: Vec3) -> f32 {
     let dp = a.dot(b);

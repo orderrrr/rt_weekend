@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use rt_impl::{
     hittable::{HittableE, Sphere},
-    material::{DefaultMaterial, LambertianMaterial, MaterialE, MetalMaterial},
+    material::{DialetricMaterial, LambertianMaterial, MaterialE, MetalMaterial},
     render_px,
 };
 use std::{fs::File, io::BufWriter};
@@ -27,15 +27,24 @@ pub fn render_cpu(wh: UVec2) {
         bounce_limit: 100,
     };
 
-    let mat_ground = MaterialE::Lambertian(LambertianMaterial::new(vec3(0.3, 0.6, 0.01)));
+    let mat_ground = MaterialE::Lambertian(LambertianMaterial::new(vec3(0.8, 0.8, 0.0)));
     let mat_center = MaterialE::Lambertian(LambertianMaterial::new(vec3(0.1, 0.2, 0.5)));
-    let mat_left = MaterialE::Metal(MetalMaterial::new(vec3(0.8, 0.8, 0.8)));
-    let mat_right = MaterialE::Metal(MetalMaterial::new(vec3(0.8, 0.6, 0.2)));
+
+    let mat_left = MaterialE::Dialetric(DialetricMaterial::new(vec3(1.0, 1.0, 1.0), 1.5));
+    let mat_left_bubble =
+        MaterialE::Dialetric(DialetricMaterial::new(vec3(1.0, 1.0, 1.0), 1.0 / 1.5));
+
+    let mat_right = MaterialE::Metal(MetalMaterial::new(vec3(0.8, 0.6, 0.2), 0.8));
 
     let world = HittableE::List(vec![
         HittableE::Sphere(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, mat_ground)),
         HittableE::Sphere(Sphere::new(Vec3::new(0.0, 0.0, -1.2), 0.5, mat_center)),
         HittableE::Sphere(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, mat_left)),
+        HittableE::Sphere(Sphere::new(
+            Vec3::new(-1.0, 0.0, -1.0),
+            0.4,
+            mat_left_bubble,
+        )),
         HittableE::Sphere(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, mat_right)),
     ]);
 
