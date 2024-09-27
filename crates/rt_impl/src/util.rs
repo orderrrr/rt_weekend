@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, mem};
 
-use spirv_std::glam::{vec3, UVec2, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles};
+use spirv_std::glam::{vec2, vec3, UVec2, Vec2, Vec2Swizzles, Vec3, Vec3Swizzles};
 
 const IEEE_MANTISSA: u32 = 0x007FFFFF; // binary32 mantissa bitmask
 const IEEE_ONE: u32 = 0x3F800000; // 1.0 in IEEE binary32
@@ -135,6 +135,13 @@ pub fn rand_f32(x: f32) -> f32 {
 // we need to provide an input vector to rand_f32 so that we can use the same random seed
 pub fn rand_vec3(x: Vec3) -> Vec3 {
     vec3(rand_f32(x.x), rand_f32(x.y), rand_f32(x.z))
+}
+
+pub fn disk_point(radius: f32, seed: Vec2) -> Vec2 {
+    let (x1, x2) = (rand_f32(seed.x), rand_f32(seed.y));
+    let p = radius * (1.0 - x1).sqrt();
+    let theta = x2 * 2.0 * PI;
+    vec2(p * theta.cos(), p * theta.sin())
 }
 
 #[cfg(test)]

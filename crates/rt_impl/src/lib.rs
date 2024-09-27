@@ -1,12 +1,12 @@
-use std::f32::INFINITY;
+use std::f32::{consts::PI, INFINITY};
 
 use bytemuck::{Pod, Zeroable};
 
-use hittable::{Hitable, HittableE, Interval};
-use material::Material;
+use hittable::{Hitable, HittableE, Interval, Sphere};
+use material::{DialetricMaterial, LambertianMaterial, Material, MaterialE, MetalMaterial};
 use ray::Ray;
 
-use spirv_std::glam::{uvec2, vec2, vec3, UVec2, Vec3};
+use spirv_std::glam::{mat3, uvec2, vec2, vec3, Mat3, UVec2, Vec3};
 
 pub mod color;
 pub mod hittable;
@@ -63,12 +63,25 @@ fn rt(sc: &ShaderConstants, r: Ray, world: &HittableE) -> Vec3 {
     return ((1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0)) * color;
 }
 
+pub fn set_camera(ro: Vec3, ta: Vec3, cr: f32) -> Mat3 {
+    let cw = (ta - ro).normalize();
+    let cp = vec3(cr.sin(), cr.cos(), 0.0);
+    let cu = cw.cross(cp).normalize();
+    let cv = cu.cross(cw);
+    mat3(cu, cv, cw)
+}
+
 pub fn render_px(sc: &ShaderConstants, world: &HittableE, idx: UVec2) -> Vec3 {
     let time = 1.0; // right now we are not using time
 
     let p = idx.as_vec2();
 
     let mut color = Vec3::splat(0.0);
+
+    // camera
+    let ta = vec3(0.0, 0.0, -1.0);
+    let ro = vec3(-2.0, 2.0, 1.0);
+    let cam = set_camera(ro, ta, 0.0);
 
     for i in 0..sc.aa_stages {
         // calc uv and flipping uv.y
@@ -83,8 +96,8 @@ pub fn render_px(sc: &ShaderConstants, world: &HittableE, idx: UVec2) -> Vec3 {
 
         uv += position * 0.005;
 
-        let ro = vec3(0.0, 0.0, 0.3);
-        let rd = vec3(uv.x, uv.y, -1.5).normalize();
+        let focal_length = 4.0;
+        let rd = cam * vec3(uv.x, uv.y, focal_length).normalize();
 
         let seed = util::hash22(uv + (i as f32) * (time % 100.));
 
@@ -108,4 +121,38 @@ pub fn linear_to_gamma_f32(f: f32) -> f32 {
     } else {
         0.0
     }
+}
+
+pub fn describe_scene() -> HittableE {
+    let mat_ground = MaterialE::Lambertian(LambertianMaterial::new(vec3(0.8, 0.8, 0.0)));
+    let mat_center = MaterialE::Lambertian(LambertianMaterial::new(vec3(0.1, 0.2, 0.5)));
+
+    let mat_left = MaterialE::Dialetric(DialetricMaterial::new(vec3(1.0, 1.0, 1.0), 1.5));
+    let mat_l_bubble = MaterialE::Dialetric(DialetricMaterial::new(vec3(1.0, 1.0, 1.0), 1.0 / 1.5));
+
+    let mat_right = MaterialE::Metal(MetalMaterial::new(vec3(0.8, 0.6, 0.2), 0.8));
+
+    HittableE::List(vec![
+        HittableE::Sphere(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, mat_ground)),
+        HittableE::Sphere(Sphere::new(Vec3::new(0.0, 0.0, -1.2), 0.5, mat_center)),
+        HittableE::Sphere(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, mat_left)),
+        HittableE::Sphere(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.4, mat_l_bubble)),
+        HittableE::Sphere(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, mat_right)),
+    ])
+}
+
+pub fn describe_scene2() -> HittableE {
+    let r = (PI / 4.0).cos();
+
+    let mat_left = MaterialE::Lambertian(LambertianMaterial::new(vec3(0.0, 0.0, 1.0)));
+    let mat_right = MaterialE::Lambertian(LambertianMaterial::new(vec3(1.0, 0.0, 0.0)));
+
+    HittableE::List(vec![
+        HittableE::Sphere(Sphere::new(Vec3::new(-r, 0.0, -1.0), r, mat_left)),
+        HittableE::Sphere(Sphere::new(Vec3::new(r, 0.0, -1.0), r, mat_right)),
+    ])
+}
+
+pub fn describe_scene3() -> HittableE {
+todo!()
 }
