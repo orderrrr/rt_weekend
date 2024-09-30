@@ -75,28 +75,6 @@ fn mix(a: Vec3, b: Vec3, x: f32) -> Vec3 {
     (a * (1.0 - x)) + (b * x)
 }
 
-//
-// void mainImage( out vec4 fragColor, in vec2 fragCoord )
-// {
-// 	vec2 uv = fragCoord.xy / iResolution.xy;
-//
-//     vec4 color = texture(iChannel0, uv).rgba;
-//
-//     float focusPoint = 78.0;
-//     float focusScale = (0.5 + sin(iTime) * 0.5) * 50.0;
-//
-//     color.rgb = depthOfField(uv, focusPoint, focusScale);
-//
-//     //tone mapping
-//     color.rgb = vec3(1.7, 1.8, 1.9) * color.rgb / (1.0 + color.rgb);
-//
-//     //inverse gamma correction
-// 	fragColor = vec4(pow(color.rgb, vec3(1.0 / DISPLAY_GAMMA)), 1.0);
-//
-//     // Debug depth
-//     //fragColor.rgb = vec3(color.a)*0.015;
-// }
-
 pub fn render_depth_pass(
     sc: &ShaderConstants,
     _world: &HittableE,
@@ -117,11 +95,7 @@ pub fn render_depth_pass(
     // color = color.powf(1.0 / 1.8);
     color = linear_to_gamma(color);
 
-    return vec4(color.x, color.y, color.z, 1.0);
-
-    let mut color = pass_one[uv_to_id(sc, uv)];
-    let color = Vec4::splat(color.w) * 0.015;
-    color
+    vec4(color.x, color.y, color.z, 1.0)
 }
 
 #[cfg(test)]

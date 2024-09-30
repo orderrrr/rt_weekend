@@ -1,6 +1,9 @@
 use itertools::Itertools;
 use rayon::prelude::*;
-use rt_impl::{depth::render_depth_pass, describe_scene, render_pass_one, ShaderConstants};
+use rt_impl::{
+    depth::{self, render_depth_pass},
+    describe_scene, render_pass_one, ShaderConstants,
+};
 use std::{fs::File, io::BufWriter};
 
 use spirv_std::glam::{uvec2, UVec2, Vec4};
@@ -19,7 +22,7 @@ pub fn render_cpu(wh: UVec2) {
     let c = ShaderConstants {
         width: wh.x,
         height: wh.y,
-        aa_stages: 150,
+        aa_stages: 100,
         bounce_limit: 100,
         focus_point: 78.0,
     };

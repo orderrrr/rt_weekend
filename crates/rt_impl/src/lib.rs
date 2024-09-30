@@ -7,6 +7,7 @@ use material::{DialetricMaterial, LambertianMaterial, Material, MaterialE, Metal
 use ray::Ray;
 
 use spirv_std::glam::{mat3, uvec2, vec2, vec3, vec4, Mat3, UVec2, Vec3, Vec4, Vec4Swizzles};
+use util::{linear_to_gamma, linear_to_gamma_f32};
 
 pub mod color;
 pub mod depth;
@@ -101,10 +102,7 @@ pub fn render_pass_one(sc: &ShaderConstants, world: &HittableE, idx: UVec2) -> V
             ((2.0 * p - uvec2(sc.width, sc.height).as_vec2()) / sc.height as f32) * vec2(1.0, -1.);
 
         let offset = i as f32 * idx.as_vec2();
-        let position = vec2(
-            util::rand_f32(offset.x) - 0.5,
-            util::rand_f32(offset.y) - 0.5,
-        );
+        let position = util::hash22(offset) - 0.5;
 
         uv += position * 0.005;
 
