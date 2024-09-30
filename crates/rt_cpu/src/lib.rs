@@ -1,11 +1,9 @@
 use itertools::Itertools;
 use rayon::prelude::*;
-use rt_impl::{
-    describe_scene, describe_scene2, hittable::{HittableE, Sphere}, material::{DialetricMaterial, LambertianMaterial, MaterialE, MetalMaterial}, render_px
-};
+use rt_impl::{depth::render_depth_pass, describe_scene, render_pass_one, ShaderConstants};
 use std::{fs::File, io::BufWriter};
 
-use spirv_std::glam::{uvec2, vec3, UVec2, Vec3};
+use spirv_std::glam::{uvec2, UVec2, Vec4};
 
 pub fn render_cpu(wh: UVec2) {
     println!("Rendering on CPU with width, height: {}, {}", wh.x, wh.y);
@@ -18,27 +16,39 @@ pub fn render_cpu(wh: UVec2) {
 
     let mut writer = encoder.write_header().unwrap();
 
-    let c = rt_impl::ShaderConstants {
+    let c = ShaderConstants {
         width: wh.x,
         height: wh.y,
         aa_stages: 150,
         bounce_limit: 100,
+        focus_point: 78.0,
     };
 
     let world = describe_scene();
 
-    let data: Vec<u8> = (0..wh.y)
+    let iter: Vec<(u32, u32)> = (0..wh.y)
         .into_iter()
         .cartesian_product(0..wh.x)
         .into_iter()
-        .collect::<Vec<(u32, u32)>>()
+        .collect::<Vec<(u32, u32)>>();
+
+    let pass_one: Vec<Vec4> = iter
         .par_iter()
-        .map(|(h, w)| {
-            let result = render_px(&c, &world, uvec2(*w, *h));
+        .map(|(h, w)| render_pass_one(&c, &world, uvec2(*w, *h)))
+        .collect();
+
+    let depth_pass: Vec<Vec4> = iter
+        .par_iter()
+        .map(|(h, w)| render_depth_pass(&c, &world, uvec2(*w, *h), &pass_one))
+        .collect();
+
+    let data: Vec<u8> = depth_pass
+        .par_iter()
+        .map(|d| {
             vec![
-                (result.x * 255.999) as u8,
-                (result.y * 255.999) as u8,
-                (result.z * 255.999) as u8,
+                (d.x * 255.999) as u8,
+                (d.y * 255.999) as u8,
+                (d.z * 255.999) as u8,
             ]
         })
         .flatten()

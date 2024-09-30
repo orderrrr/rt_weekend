@@ -9,6 +9,22 @@ pub fn degrees_to_radians(degrees: f32) -> f32 {
     return degrees * std::f32::consts::PI / 180.0;
 }
 
+pub fn linear_to_gamma(splat: Vec3) -> Vec3 {
+    vec3(
+        linear_to_gamma_f32(splat.x),
+        linear_to_gamma_f32(splat.y),
+        linear_to_gamma_f32(splat.z),
+    )
+}
+
+pub fn linear_to_gamma_f32(f: f32) -> f32 {
+    if f > 0. {
+        f.sqrt()
+    } else {
+        0.0
+    }
+}
+
 pub fn hash22(p: Vec2) -> Vec2 {
     let mut p3 = (p.xyx() * vec3(0.1031, 0.1030, 0.0973)).fract();
     p3 += p3.dot(p3.yzx() + vec3(33.33, 33.33, 33.33));

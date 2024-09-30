@@ -6,15 +6,14 @@ use hittable::{Hitable, HittableE, Interval, Sphere};
 use material::{DialetricMaterial, LambertianMaterial, Material, MaterialE, MetalMaterial};
 use ray::Ray;
 
-use spirv_std::glam::{mat3, uvec2, vec2, vec3, Mat3, UVec2, Vec3};
+use spirv_std::glam::{mat3, uvec2, vec2, vec3, vec4, Mat3, UVec2, Vec3, Vec4, Vec4Swizzles};
 
 pub mod color;
+pub mod depth;
 pub mod hittable;
 pub mod material;
 pub mod ray;
 pub mod util;
-
-use color::Saturate;
 
 #[derive(Copy, Clone, Pod, Zeroable)]
 #[repr(C)]
@@ -23,12 +22,24 @@ pub struct ShaderConstants {
     pub height: u32,
     pub aa_stages: u32,
     pub bounce_limit: i32,
+    pub focus_point: f32,
 }
 
-fn rt(sc: &ShaderConstants, r: Ray, world: &HittableE) -> Vec3 {
+fn rt(sc: &ShaderConstants, r: Ray, world: &HittableE) -> Vec4 {
     let mut r = r;
     let mut hit = world.hit(&r, Interval::new(0.0, INFINITY));
     let mut color = Vec3::splat(1.0);
+
+    let mut d = 100.0;
+
+    // first hit we should provide the distance to the camera.
+    match &hit {
+        Some(h) => {
+            d = r.origin.distance(h.position);
+        }
+        None => (),
+    }
+
     let mut iter = 0;
 
     loop {
@@ -60,7 +71,8 @@ fn rt(sc: &ShaderConstants, r: Ray, world: &HittableE) -> Vec3 {
 
     let rdu = r.direction.normalize();
     let a = 0.5 * (rdu.y + 1.0);
-    return ((1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0)) * color;
+    color = ((1.0 - a) * vec3(1.0, 1.0, 1.0) + a * vec3(0.5, 0.7, 1.0)) * color;
+    vec4(color.x, color.y, color.z, d)
 }
 
 pub fn set_camera(ro: Vec3, ta: Vec3, cr: f32) -> Mat3 {
@@ -71,16 +83,16 @@ pub fn set_camera(ro: Vec3, ta: Vec3, cr: f32) -> Mat3 {
     mat3(cu, cv, cw)
 }
 
-pub fn render_px(sc: &ShaderConstants, world: &HittableE, idx: UVec2) -> Vec3 {
+pub fn render_pass_one(sc: &ShaderConstants, world: &HittableE, idx: UVec2) -> Vec4 {
     let time = 1.0; // right now we are not using time
 
     let p = idx.as_vec2();
 
-    let mut color = Vec3::splat(0.0);
+    let mut color = Vec4::splat(0.0);
 
     // camera
     let ta = vec3(0.0, 0.0, -1.0);
-    let ro = vec3(-2.0, 2.0, 1.0);
+    let ro = vec3(-2.0, 1.0, 1.0);
     let cam = set_camera(ro, ta, 0.0);
 
     for i in 0..sc.aa_stages {
@@ -101,26 +113,10 @@ pub fn render_px(sc: &ShaderConstants, world: &HittableE, idx: UVec2) -> Vec3 {
 
         let seed = util::hash22(uv + (i as f32) * (time % 100.));
 
-        color += rt(sc, Ray::new(ro, rd, seed), &world).saturate();
+        color += rt(sc, Ray::new(ro, rd, seed), &world);
     }
 
-    linear_to_gamma((color / sc.aa_stages as f32).clamp(Vec3::splat(0.0), Vec3::splat(1.0)))
-}
-
-pub fn linear_to_gamma(splat: Vec3) -> Vec3 {
-    vec3(
-        linear_to_gamma_f32(splat.x),
-        linear_to_gamma_f32(splat.y),
-        linear_to_gamma_f32(splat.z),
-    )
-}
-
-pub fn linear_to_gamma_f32(f: f32) -> f32 {
-    if f > 0. {
-        f.sqrt()
-    } else {
-        0.0
-    }
+    color / sc.aa_stages as f32
 }
 
 pub fn describe_scene() -> HittableE {
